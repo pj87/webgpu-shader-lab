@@ -10,10 +10,32 @@
     <main class="app-shell">
       <aside class="sidebar">
         <div>
-          <p class="eyebrow">Milestone 2</p>
+          <p class="eyebrow">Milestone 3</p>
           <h1>WebGPU Shader Lab</h1>
         </div>
+        <section class="project-panel" aria-label="Projects">
+          <div>
+            <p class="eyebrow">Project</p>
+            <input id="projectTitleInput" type="text" value="Untitled Shader" aria-label="Project title" />
+          </div>
+          <div class="project-actions">
+            <button id="newProjectButton" type="button">New</button>
+            <button id="saveProjectButton" type="button">Save</button>
+            <button id="duplicateProjectButton" type="button">Copy</button>
+            <button id="deleteProjectButton" type="button">Delete</button>
+          </div>
+          <select id="projectSelect" size="5" aria-label="Saved projects"></select>
+          <div class="project-actions">
+            <button id="exportProjectButton" type="button">Export</button>
+            <button id="importProjectButton" type="button">Import</button>
+            <input id="importProjectInput" type="file" accept="application/json" hidden />
+          </div>
+        </section>
         <div class="status-group">
+          <div class="status-row">
+            <span>Project</span>
+            <strong id="projectStatus">Draft</strong>
+          </div>
           <div class="status-row">
             <span>Adapter</span>
             <strong id="adapterStatus">Checking</strong>

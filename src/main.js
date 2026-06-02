@@ -1,4 +1,6 @@
 (async () => {
+  const storageKey = "webgpu-shader-lab-projects";
+
   const shaderTemplates = {
     rings: `@fragment
 fn fsMain(input: VertexOutput) -> @location(0) vec4<f32> {
@@ -263,6 +265,15 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   }
 
   const editor = document.querySelector("#shaderEditor");
+  const projectTitleInput = document.querySelector("#projectTitleInput");
+  const projectSelect = document.querySelector("#projectSelect");
+  const newProjectButton = document.querySelector("#newProjectButton");
+  const saveProjectButton = document.querySelector("#saveProjectButton");
+  const duplicateProjectButton = document.querySelector("#duplicateProjectButton");
+  const deleteProjectButton = document.querySelector("#deleteProjectButton");
+  const exportProjectButton = document.querySelector("#exportProjectButton");
+  const importProjectButton = document.querySelector("#importProjectButton");
+  const importProjectInput = document.querySelector("#importProjectInput");
   const runButton = document.querySelector("#runButton");
   const pauseButton = document.querySelector("#pauseButton");
   const resetTimeButton = document.querySelector("#resetTimeButton");
@@ -270,6 +281,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const templateSelect = document.querySelector("#templateSelect");
   const autoRunToggle = document.querySelector("#autoRunToggle");
   const errorPanel = document.querySelector("#errorPanel");
+  const projectStatus = document.querySelector("#projectStatus");
   const adapterStatus = document.querySelector("#adapterStatus");
   const pipelineStatus = document.querySelector("#pipelineStatus");
   const frameStatus = document.querySelector("#frameStatus");
@@ -281,8 +293,203 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const previewPane = document.querySelector(".preview-pane");
 
   let compileTimer = 0;
+  let projects = [];
+  let activeProjectId = "";
+  let isDirty = false;
 
-  editor.value = shaderTemplates.rings;
+  const createId = () => {
+    if (crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    return `project-${Date.now()}-${Math.round(Math.random() * 100000)}`;
+  };
+
+  const getNow = () => new Date().toISOString();
+
+  const createProject = (title = "Untitled Shader", template = "rings") => ({
+    id: createId(),
+    title,
+    shaderSource: shaderTemplates[template],
+    template,
+    uniforms: {
+      scale: 1,
+      intensity: 1,
+    },
+    createdAt: getNow(),
+    updatedAt: getNow(),
+  });
+
+  const loadProjects = () => {
+    try {
+      const storedProjects = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      return Array.isArray(storedProjects) ? storedProjects : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const persistProjects = () => {
+    localStorage.setItem(storageKey, JSON.stringify(projects));
+  };
+
+  const setDirty = (value) => {
+    isDirty = value;
+    projectStatus.textContent = value ? "Unsaved" : "Saved";
+  };
+
+  const renderProjectList = () => {
+    projectSelect.innerHTML = "";
+
+    for (const project of projects) {
+      const option = document.createElement("option");
+      option.value = project.id;
+      option.textContent = project.title || "Untitled Shader";
+      option.selected = project.id === activeProjectId;
+      projectSelect.append(option);
+    }
+  };
+
+  const readCurrentProject = () => ({
+    id: activeProjectId || createId(),
+    title: projectTitleInput.value.trim() || "Untitled Shader",
+    shaderSource: editor.value,
+    template: templateSelect.value,
+    uniforms: {
+      scale: Number(scaleInput.value),
+      intensity: Number(intensityInput.value),
+    },
+    createdAt: projects.find((project) => project.id === activeProjectId)?.createdAt || getNow(),
+    updatedAt: getNow(),
+  });
+
+  const applyProject = (project, shouldCompile = true) => {
+    activeProjectId = project.id;
+    projectTitleInput.value = project.title || "Untitled Shader";
+    templateSelect.value = shaderTemplates[project.template] ? project.template : "rings";
+    editor.value = project.shaderSource || shaderTemplates[templateSelect.value];
+    scaleInput.value = String(project.uniforms?.scale ?? 1);
+    intensityInput.value = String(project.uniforms?.intensity ?? 1);
+    updateUniformControl("scale", scaleInput, scaleValue);
+    updateUniformControl("intensity", intensityInput, intensityValue);
+    renderProjectList();
+    setDirty(false);
+
+    if (shouldCompile) {
+      compileShader();
+    }
+  };
+
+  const saveActiveProject = () => {
+    const project = readCurrentProject();
+    const index = projects.findIndex((item) => item.id === project.id);
+
+    if (index === -1) {
+      projects.unshift(project);
+    } else {
+      projects[index] = project;
+    }
+
+    activeProjectId = project.id;
+    persistProjects();
+    renderProjectList();
+    setDirty(false);
+  };
+
+  const startNewProject = () => {
+    const project = createProject();
+    activeProjectId = project.id;
+    projectTitleInput.value = project.title;
+    templateSelect.value = project.template;
+    editor.value = project.shaderSource;
+    scaleInput.value = String(project.uniforms.scale);
+    intensityInput.value = String(project.uniforms.intensity);
+    updateUniformControl("scale", scaleInput, scaleValue);
+    updateUniformControl("intensity", intensityInput, intensityValue);
+    renderProjectList();
+    setDirty(true);
+    compileShader();
+  };
+
+  const duplicateActiveProject = () => {
+    const source = readCurrentProject();
+    const duplicate = {
+      ...source,
+      id: createId(),
+      title: `${source.title} Copy`,
+      createdAt: getNow(),
+      updatedAt: getNow(),
+    };
+
+    projects.unshift(duplicate);
+    activeProjectId = duplicate.id;
+    persistProjects();
+    applyProject(duplicate);
+  };
+
+  const deleteActiveProject = () => {
+    if (!activeProjectId) {
+      return;
+    }
+
+    const project = projects.find((item) => item.id === activeProjectId);
+    if (project && !confirm(`Delete "${project.title}"?`)) {
+      return;
+    }
+
+    projects = projects.filter((item) => item.id !== activeProjectId);
+    persistProjects();
+
+    if (projects.length > 0) {
+      applyProject(projects[0]);
+      return;
+    }
+
+    startNewProject();
+  };
+
+  const exportActiveProject = () => {
+    const project = readCurrentProject();
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "shader"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importProjectFile = async (file) => {
+    try {
+      const imported = JSON.parse(await file.text());
+
+      if (!imported || typeof imported.shaderSource !== "string") {
+        throw new Error("Imported file is not a shader project.");
+      }
+
+      const project = {
+        ...createProject(imported.title || "Imported Shader"),
+        ...imported,
+        id: createId(),
+        title: imported.title || "Imported Shader",
+        uniforms: {
+          scale: Number(imported.uniforms?.scale ?? 1),
+          intensity: Number(imported.uniforms?.intensity ?? 1),
+        },
+        createdAt: getNow(),
+        updatedAt: getNow(),
+      };
+
+      projects.unshift(project);
+      persistProjects();
+      applyProject(project);
+    } catch (error) {
+      setError(error.message || String(error), true);
+    } finally {
+      importProjectInput.value = "";
+    }
+  };
 
   const setError = (message, isError = false) => {
     errorPanel.textContent = message;
@@ -339,8 +546,32 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   runButton.addEventListener("click", compileShader);
+  saveProjectButton.addEventListener("click", saveActiveProject);
+  newProjectButton.addEventListener("click", startNewProject);
+  duplicateProjectButton.addEventListener("click", duplicateActiveProject);
+  deleteProjectButton.addEventListener("click", deleteActiveProject);
+  exportProjectButton.addEventListener("click", exportActiveProject);
+  importProjectButton.addEventListener("click", () => importProjectInput.click());
+  importProjectInput.addEventListener("change", () => {
+    const [file] = importProjectInput.files;
 
-  editor.addEventListener("input", queueCompile);
+    if (file) {
+      importProjectFile(file);
+    }
+  });
+  projectSelect.addEventListener("change", () => {
+    const project = projects.find((item) => item.id === projectSelect.value);
+
+    if (project) {
+      applyProject(project);
+    }
+  });
+  projectTitleInput.addEventListener("input", () => setDirty(true));
+
+  editor.addEventListener("input", () => {
+    setDirty(true);
+    queueCompile();
+  });
   editor.addEventListener("keydown", (event) => {
     if (event.key !== "Tab") {
       return;
@@ -352,11 +583,13 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     editor.value = `${editor.value.slice(0, start)}  ${editor.value.slice(end)}`;
     editor.selectionStart = start + 2;
     editor.selectionEnd = start + 2;
+    setDirty(true);
     queueCompile();
   });
 
   templateSelect.addEventListener("change", () => {
     editor.value = shaderTemplates[templateSelect.value];
+    setDirty(true);
     compileShader();
   });
 
@@ -381,16 +614,26 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 
   scaleInput.addEventListener("input", () => {
     updateUniformControl("scale", scaleInput, scaleValue);
+    setDirty(true);
   });
 
   intensityInput.addEventListener("input", () => {
     updateUniformControl("intensity", intensityInput, intensityValue);
+    setDirty(true);
   });
 
   try {
+    projects = loadProjects();
+
+    if (projects.length === 0) {
+      const starterProject = createProject("Starter Rings", "rings");
+      projects = [starterProject];
+      activeProjectId = starterProject.id;
+      persistProjects();
+    }
+
+    applyProject(projects[0], false);
     await renderer.init();
-    updateUniformControl("scale", scaleInput, scaleValue);
-    updateUniformControl("intensity", intensityInput, intensityValue);
     await compileShader();
   } catch (error) {
     setStatus("adapter", "Unavailable");
