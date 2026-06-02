@@ -1,6 +1,6 @@
 # WebGPU Shader Lab
 
-Milestone 1 of the full-stack WebGPU learning plan.
+Milestone 2 of the full-stack WebGPU learning plan.
 
 This version is dependency-free because Node.js/npm are not currently available on the machine. It provides:
 
@@ -8,8 +8,12 @@ This version is dependency-free because Node.js/npm are not currently available 
 - a WebGPU canvas preview
 - an editable WGSL fragment shader
 - a compile/run button
+- shader templates
+- optional auto-run after edits
 - validation error output
 - time, resolution, and mouse uniforms
+- scale and intensity uniforms
+- pause, reset-time, and fullscreen preview controls
 
 ## Run
 

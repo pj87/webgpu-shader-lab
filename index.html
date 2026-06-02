@@ -10,7 +10,7 @@
     <main class="app-shell">
       <aside class="sidebar">
         <div>
-          <p class="eyebrow">Milestone 1</p>
+          <p class="eyebrow">Milestone 2</p>
           <h1>WebGPU Shader Lab</h1>
         </div>
         <div class="status-group">
@@ -22,6 +22,10 @@
             <span>Pipeline</span>
             <strong id="pipelineStatus">Idle</strong>
           </div>
+          <div class="status-row">
+            <span>Frame</span>
+            <strong id="frameStatus">Paused</strong>
+          </div>
         </div>
       </aside>
 
@@ -32,14 +36,42 @@
               <p class="eyebrow">Fragment WGSL</p>
               <h2>Shader Editor</h2>
             </div>
-            <button id="runButton" type="button">Run</button>
+            <div class="toolbar-actions">
+              <select id="templateSelect" aria-label="Shader template">
+                <option value="rings">Rings</option>
+                <option value="plasma">Plasma</option>
+                <option value="gradient">Gradient</option>
+              </select>
+              <label class="toggle-control">
+                <input id="autoRunToggle" type="checkbox" checked />
+                <span>Auto</span>
+              </label>
+              <button id="runButton" type="button">Run</button>
+            </div>
           </div>
           <textarea id="shaderEditor" spellcheck="false"></textarea>
           <pre id="errorPanel" class="error-panel">Ready.</pre>
         </div>
 
         <div class="preview-pane">
+          <div class="preview-toolbar">
+            <button id="pauseButton" type="button">Pause</button>
+            <button id="resetTimeButton" type="button">Reset</button>
+            <button id="fullscreenButton" type="button">Full</button>
+          </div>
           <canvas id="previewCanvas"></canvas>
+          <div class="inspector">
+            <label>
+              <span>Scale</span>
+              <input id="scaleInput" type="range" min="0.25" max="4" step="0.01" value="1" />
+              <strong id="scaleValue">1.00</strong>
+            </label>
+            <label>
+              <span>Intensity</span>
+              <input id="intensityInput" type="range" min="0" max="2" step="0.01" value="1" />
+              <strong id="intensityValue">1.00</strong>
+            </label>
+          </div>
         </div>
       </section>
     </main>

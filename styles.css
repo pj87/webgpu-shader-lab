@@ -21,6 +21,7 @@ body {
 }
 
 button,
+select,
 textarea {
   font: inherit;
 }
@@ -110,11 +111,22 @@ h2 {
   border-bottom: 1px solid rgba(244, 241, 236, 0.13);
 }
 
+.toolbar-actions,
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+button,
+select {
+  height: 40px;
+  border-radius: 6px;
+}
+
 button {
   min-width: 84px;
-  height: 40px;
   border: 1px solid rgba(244, 241, 236, 0.18);
-  border-radius: 6px;
   background: #d86445;
   color: #151515;
   font-weight: 800;
@@ -123,6 +135,32 @@ button {
 
 button:hover {
   background: #ee7858;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+select {
+  max-width: 130px;
+  border: 1px solid rgba(244, 241, 236, 0.18);
+  background: #20201e;
+  color: #f4f1ec;
+}
+
+.toggle-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  color: #d7d1c7;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.toggle-control input {
+  accent-color: #8cc7b4;
 }
 
 textarea {
@@ -165,10 +203,59 @@ textarea {
   background: #050505;
 }
 
+.preview-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+}
+
+.preview-toolbar button {
+  min-width: 68px;
+  height: 36px;
+  background: rgba(244, 241, 236, 0.9);
+  color: #121212;
+}
+
 canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.inspector {
+  position: absolute;
+  z-index: 2;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  gap: 12px;
+  width: min(360px, calc(100% - 28px));
+  padding: 14px;
+  border: 1px solid rgba(244, 241, 236, 0.14);
+  border-radius: 8px;
+  background: rgba(17, 17, 16, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.inspector label {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+  color: #d7d1c7;
+  font-size: 13px;
+}
+
+.inspector input {
+  width: 100%;
+  accent-color: #8cc7b4;
+}
+
+.inspector strong {
+  color: #f4f1ec;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 @media (max-width: 900px) {
@@ -196,5 +283,19 @@ canvas {
 
   .preview-pane {
     min-height: 420px;
+  }
+
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-actions button {
+    flex: 1;
   }
 }
