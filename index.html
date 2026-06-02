@@ -10,8 +10,12 @@
     <main class="app-shell">
       <aside class="sidebar">
         <div>
-          <p class="eyebrow">Milestone 3</p>
+          <p class="eyebrow">Milestone 4</p>
           <h1>WebGPU Shader Lab</h1>
+        </div>
+        <div id="viewerNotice" class="viewer-notice" hidden>
+          <strong>Public Viewer</strong>
+          <span>Read-only shader link</span>
         </div>
         <section class="project-panel" aria-label="Projects">
           <div>
@@ -30,6 +34,11 @@
             <button id="importProjectButton" type="button">Import</button>
             <input id="importProjectInput" type="file" accept="application/json" hidden />
           </div>
+          <div class="project-actions">
+            <button id="shareProjectButton" type="button">Share</button>
+            <button id="copyShareLinkButton" type="button">Copy Link</button>
+          </div>
+          <button id="editCopyButton" class="wide-button" type="button" hidden>Edit Copy</button>
         </section>
         <div class="status-group">
           <div class="status-row">

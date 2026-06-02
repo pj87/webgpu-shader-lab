@@ -1,5 +1,6 @@
 (async () => {
   const storageKey = "webgpu-shader-lab-projects";
+  const shareParam = "share";
 
   const shaderTemplates = {
     rings: `@fragment
@@ -265,6 +266,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   }
 
   const editor = document.querySelector("#shaderEditor");
+  const viewerNotice = document.querySelector("#viewerNotice");
   const projectTitleInput = document.querySelector("#projectTitleInput");
   const projectSelect = document.querySelector("#projectSelect");
   const newProjectButton = document.querySelector("#newProjectButton");
@@ -274,6 +276,9 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const exportProjectButton = document.querySelector("#exportProjectButton");
   const importProjectButton = document.querySelector("#importProjectButton");
   const importProjectInput = document.querySelector("#importProjectInput");
+  const shareProjectButton = document.querySelector("#shareProjectButton");
+  const copyShareLinkButton = document.querySelector("#copyShareLinkButton");
+  const editCopyButton = document.querySelector("#editCopyButton");
   const runButton = document.querySelector("#runButton");
   const pauseButton = document.querySelector("#pauseButton");
   const resetTimeButton = document.querySelector("#resetTimeButton");
@@ -296,6 +301,8 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   let projects = [];
   let activeProjectId = "";
   let isDirty = false;
+  let isViewerMode = false;
+  let lastShareUrl = "";
 
   const createId = () => {
     if (crypto.randomUUID) {
@@ -306,6 +313,58 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   const getNow = () => new Date().toISOString();
+
+  const encodeSharePayload = (project) => {
+    const json = JSON.stringify({
+      title: project.title,
+      shaderSource: project.shaderSource,
+      template: project.template,
+      uniforms: project.uniforms,
+    });
+    const bytes = new TextEncoder().encode(json);
+    let binary = "";
+
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+
+  const decodeSharePayload = (value) => {
+    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+
+    if (!parsed || typeof parsed.shaderSource !== "string") {
+      throw new Error("Shared shader payload is invalid.");
+    }
+
+    return {
+      ...createProject(parsed.title || "Shared Shader"),
+      ...parsed,
+      id: createId(),
+      title: parsed.title || "Shared Shader",
+      uniforms: {
+        scale: Number(parsed.uniforms?.scale ?? 1),
+        intensity: Number(parsed.uniforms?.intensity ?? 1),
+      },
+      createdAt: getNow(),
+      updatedAt: getNow(),
+    };
+  };
+
+  const readSharedProjectFromUrl = () => {
+    const value = new URLSearchParams(window.location.search).get(shareParam);
+
+    if (!value) {
+      return null;
+    }
+
+    return decodeSharePayload(value);
+  };
 
   const createProject = (title = "Untitled Shader", template = "rings") => ({
     id: createId(),
@@ -335,7 +394,37 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 
   const setDirty = (value) => {
     isDirty = value;
-    projectStatus.textContent = value ? "Unsaved" : "Saved";
+    projectStatus.textContent = isViewerMode ? "Shared" : value ? "Unsaved" : "Saved";
+  };
+
+  const setViewerMode = (value) => {
+    isViewerMode = value;
+    document.body.classList.toggle("viewer-mode", value);
+    viewerNotice.hidden = !value;
+    editCopyButton.hidden = !value;
+
+    const disabledControls = [
+      projectTitleInput,
+      projectSelect,
+      newProjectButton,
+      saveProjectButton,
+      duplicateProjectButton,
+      deleteProjectButton,
+      exportProjectButton,
+      importProjectButton,
+      shareProjectButton,
+      copyShareLinkButton,
+      templateSelect,
+      autoRunToggle,
+      runButton,
+      editor,
+    ];
+
+    for (const control of disabledControls) {
+      control.disabled = value;
+    }
+
+    setDirty(false);
   };
 
   const renderProjectList = () => {
@@ -381,6 +470,10 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   const saveActiveProject = () => {
+    if (isViewerMode) {
+      return;
+    }
+
     const project = readCurrentProject();
     const index = projects.findIndex((item) => item.id === project.id);
 
@@ -397,6 +490,10 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   const startNewProject = () => {
+    if (isViewerMode) {
+      return;
+    }
+
     const project = createProject();
     activeProjectId = project.id;
     projectTitleInput.value = project.title;
@@ -412,6 +509,10 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   const duplicateActiveProject = () => {
+    if (isViewerMode) {
+      return;
+    }
+
     const source = readCurrentProject();
     const duplicate = {
       ...source,
@@ -428,7 +529,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   const deleteActiveProject = () => {
-    if (!activeProjectId) {
+    if (isViewerMode || !activeProjectId) {
       return;
     }
 
@@ -458,6 +559,54 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     link.download = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "shader"}.json`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const createShareUrl = () => {
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.hash = "";
+    url.searchParams.set(shareParam, encodeSharePayload(readCurrentProject()));
+    lastShareUrl = url.toString();
+    return lastShareUrl;
+  };
+
+  const copyShareUrl = async () => {
+    const url = lastShareUrl || createShareUrl();
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setError("Share link copied.");
+    } catch {
+      window.prompt("Copy share link", url);
+      setError("Share link generated.");
+    }
+  };
+
+  const openShareUrl = () => {
+    const url = createShareUrl();
+    copyShareUrl();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const editSharedCopy = () => {
+    const project = {
+      ...readCurrentProject(),
+      id: createId(),
+      title: `${projectTitleInput.value.trim() || "Shared Shader"} Copy`,
+      createdAt: getNow(),
+      updatedAt: getNow(),
+    };
+
+    projects = loadProjects();
+    projects.unshift(project);
+    persistProjects();
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete(shareParam);
+    window.history.replaceState({}, "", url);
+
+    setViewerMode(false);
+    applyProject(project);
   };
 
   const importProjectFile = async (file) => {
@@ -526,7 +675,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
       setStatus("pipeline", "Error");
       setError(error.message || String(error), true);
     } finally {
-      runButton.disabled = false;
+      runButton.disabled = isViewerMode;
     }
   };
 
@@ -551,6 +700,9 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   duplicateProjectButton.addEventListener("click", duplicateActiveProject);
   deleteProjectButton.addEventListener("click", deleteActiveProject);
   exportProjectButton.addEventListener("click", exportActiveProject);
+  shareProjectButton.addEventListener("click", openShareUrl);
+  copyShareLinkButton.addEventListener("click", copyShareUrl);
+  editCopyButton.addEventListener("click", editSharedCopy);
   importProjectButton.addEventListener("click", () => importProjectInput.click());
   importProjectInput.addEventListener("change", () => {
     const [file] = importProjectInput.files;
@@ -623,6 +775,16 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   });
 
   try {
+    const sharedProject = readSharedProjectFromUrl();
+
+    if (sharedProject) {
+      setViewerMode(true);
+      applyProject(sharedProject, false);
+      await renderer.init();
+      await compileShader();
+      return;
+    }
+
     projects = loadProjects();
 
     if (projects.length === 0) {

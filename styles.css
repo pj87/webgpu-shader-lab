@@ -20,6 +20,20 @@ body {
     #141414;
 }
 
+body.viewer-mode .editor-pane {
+  grid-template-rows: auto minmax(300px, 1fr) 120px;
+}
+
+body.viewer-mode textarea {
+  color: #cfc8bd;
+}
+
+body.viewer-mode .project-panel select,
+body.viewer-mode .project-panel input[type="text"],
+body.viewer-mode textarea {
+  opacity: 0.78;
+}
+
 button,
 input,
 select,
@@ -67,6 +81,25 @@ h2 {
   font-size: 18px;
 }
 
+.viewer-notice {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid rgba(140, 199, 180, 0.34);
+  border-radius: 8px;
+  background: rgba(45, 104, 91, 0.22);
+}
+
+.viewer-notice strong {
+  color: #f4f1ec;
+  font-size: 13px;
+}
+
+.viewer-notice span {
+  color: #b9b3aa;
+  font-size: 12px;
+}
+
 .project-panel {
   display: grid;
   gap: 12px;
@@ -104,6 +137,10 @@ h2 {
 
 .project-actions button {
   min-width: 0;
+}
+
+.wide-button {
+  width: 100%;
 }
 
 .status-group {

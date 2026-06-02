@@ -1,6 +1,6 @@
 # WebGPU Shader Lab
 
-Milestone 3 of the full-stack WebGPU learning plan.
+Milestone 4 of the full-stack WebGPU learning plan.
 
 This version is dependency-free because Node.js/npm are not currently available on the machine. It provides:
 
@@ -16,6 +16,8 @@ This version is dependency-free because Node.js/npm are not currently available 
 - pause, reset-time, and fullscreen preview controls
 - local project CRUD using browser storage
 - JSON export/import for shader projects
+- read-only share URLs
+- edit-copy flow for shared shaders
 
 ## Run
 
