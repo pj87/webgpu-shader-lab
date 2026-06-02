@@ -40,3 +40,7 @@ Chrome or Edge are the safest choices. If the browser blocks WebGPU for local fi
 ## Next Step
 
 Install Node.js, then move this into a Vite + React + TypeScript structure so the static prototype can become a typed React app.
+
+## Handoff
+
+See `HANDOFF.md` for the current implementation summary, known constraints, and recommended next steps.
