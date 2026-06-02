@@ -294,12 +294,18 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const scaleValue = document.querySelector("#scaleValue");
   const intensityInput = document.querySelector("#intensityInput");
   const intensityValue = document.querySelector("#intensityValue");
+  const presetSelect = document.querySelector("#presetSelect");
+  const presetNameInput = document.querySelector("#presetNameInput");
+  const savePresetButton = document.querySelector("#savePresetButton");
+  const loadPresetButton = document.querySelector("#loadPresetButton");
+  const deletePresetButton = document.querySelector("#deletePresetButton");
   const canvas = document.querySelector("#previewCanvas");
   const previewPane = document.querySelector(".preview-pane");
 
   let compileTimer = 0;
   let projects = [];
   let activeProjectId = "";
+  let activeProjectSnapshot = null;
   let isDirty = false;
   let isViewerMode = false;
   let lastShareUrl = "";
@@ -320,6 +326,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
       shaderSource: project.shaderSource,
       template: project.template,
       uniforms: project.uniforms,
+      presets: project.presets || [],
     });
     const bytes = new TextEncoder().encode(json);
     let binary = "";
@@ -351,6 +358,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
         scale: Number(parsed.uniforms?.scale ?? 1),
         intensity: Number(parsed.uniforms?.intensity ?? 1),
       },
+      presets: normalizePresets(parsed.presets),
       createdAt: getNow(),
       updatedAt: getNow(),
     };
@@ -375,9 +383,38 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
       scale: 1,
       intensity: 1,
     },
+    presets: [
+      {
+        id: createId(),
+        name: "Default",
+        uniforms: {
+          scale: 1,
+          intensity: 1,
+        },
+        createdAt: getNow(),
+      },
+    ],
     createdAt: getNow(),
     updatedAt: getNow(),
   });
+
+  const normalizePresets = (value) => {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter((preset) => preset && typeof preset.name === "string")
+      .map((preset) => ({
+        id: preset.id || createId(),
+        name: preset.name || "Preset",
+        uniforms: {
+          scale: Number(preset.uniforms?.scale ?? 1),
+          intensity: Number(preset.uniforms?.intensity ?? 1),
+        },
+        createdAt: preset.createdAt || getNow(),
+      }));
+  };
 
   const loadProjects = () => {
     try {
@@ -418,6 +455,9 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
       autoRunToggle,
       runButton,
       editor,
+      presetNameInput,
+      savePresetButton,
+      deletePresetButton,
     ];
 
     for (const control of disabledControls) {
@@ -439,6 +479,33 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     }
   };
 
+  const renderPresetList = (presets = []) => {
+    presetSelect.innerHTML = "";
+
+    for (const preset of presets) {
+      const option = document.createElement("option");
+      option.value = preset.id;
+      option.textContent = preset.name;
+      presetSelect.append(option);
+    }
+
+    if (presets.length > 0) {
+      presetSelect.value = presets[0].id;
+      presetNameInput.value = presets[0].name;
+    } else {
+      presetNameInput.value = "Preset 1";
+    }
+  };
+
+  const getActiveStoredProject = () => projects.find((project) => project.id === activeProjectId);
+
+  const getActiveProject = () => getActiveStoredProject() || activeProjectSnapshot;
+
+  const readCurrentUniforms = () => ({
+    scale: Number(scaleInput.value),
+    intensity: Number(intensityInput.value),
+  });
+
   const readCurrentProject = () => ({
     id: activeProjectId || createId(),
     title: projectTitleInput.value.trim() || "Untitled Shader",
@@ -448,12 +515,15 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
       scale: Number(scaleInput.value),
       intensity: Number(intensityInput.value),
     },
-    createdAt: projects.find((project) => project.id === activeProjectId)?.createdAt || getNow(),
+    presets: normalizePresets(getActiveProject()?.presets),
+    createdAt: getActiveProject()?.createdAt || getNow(),
     updatedAt: getNow(),
   });
 
   const applyProject = (project, shouldCompile = true) => {
+    project.presets = normalizePresets(project.presets);
     activeProjectId = project.id;
+    activeProjectSnapshot = project;
     projectTitleInput.value = project.title || "Untitled Shader";
     templateSelect.value = shaderTemplates[project.template] ? project.template : "rings";
     editor.value = project.shaderSource || shaderTemplates[templateSelect.value];
@@ -462,6 +532,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     updateUniformControl("scale", scaleInput, scaleValue);
     updateUniformControl("intensity", intensityInput, intensityValue);
     renderProjectList();
+    renderPresetList(project.presets);
     setDirty(false);
 
     if (shouldCompile) {
@@ -484,8 +555,10 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     }
 
     activeProjectId = project.id;
+    activeProjectSnapshot = project;
     persistProjects();
     renderProjectList();
+    renderPresetList(project.presets);
     setDirty(false);
   };
 
@@ -496,6 +569,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 
     const project = createProject();
     activeProjectId = project.id;
+    activeProjectSnapshot = project;
     projectTitleInput.value = project.title;
     templateSelect.value = project.template;
     editor.value = project.shaderSource;
@@ -504,6 +578,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     updateUniformControl("scale", scaleInput, scaleValue);
     updateUniformControl("intensity", intensityInput, intensityValue);
     renderProjectList();
+    renderPresetList(project.presets);
     setDirty(true);
     compileShader();
   };
@@ -559,6 +634,92 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     link.download = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "shader"}.json`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const persistActiveProjectPresets = (presets) => {
+    const project = getActiveStoredProject();
+    const normalizedPresets = normalizePresets(presets);
+
+    if (project) {
+      project.presets = normalizedPresets;
+      project.updatedAt = getNow();
+      activeProjectSnapshot = project;
+      persistProjects();
+      renderPresetList(project.presets);
+      return;
+    }
+
+    if (activeProjectSnapshot) {
+      activeProjectSnapshot.presets = normalizedPresets;
+      activeProjectSnapshot.updatedAt = getNow();
+    }
+
+    renderPresetList(normalizedPresets);
+  };
+
+  const savePreset = () => {
+    if (isViewerMode) {
+      return;
+    }
+
+    const project = getActiveProject() || readCurrentProject();
+    const presets = normalizePresets(project.presets);
+    const selectedId = presetSelect.value;
+    const existingPreset = presets.find((item) => item.id === selectedId);
+    const name = presetNameInput.value.trim() || "Preset";
+    const shouldUpdateSelected = existingPreset && existingPreset.name === name;
+    const preset = {
+      id: shouldUpdateSelected ? selectedId : createId(),
+      name,
+      uniforms: readCurrentUniforms(),
+      createdAt: shouldUpdateSelected ? existingPreset.createdAt : getNow(),
+    };
+    const index = presets.findIndex((item) => item.id === preset.id);
+
+    if (index === -1) {
+      presets.unshift(preset);
+    } else {
+      presets[index] = preset;
+    }
+
+    persistActiveProjectPresets(presets);
+    presetSelect.value = preset.id;
+    presetNameInput.value = preset.name;
+    setDirty(false);
+    setError("Preset saved.");
+  };
+
+  const loadPreset = () => {
+    const project = getActiveProject() || readCurrentProject();
+    const preset = normalizePresets(project.presets).find((item) => item.id === presetSelect.value);
+
+    if (!preset) {
+      return;
+    }
+
+    scaleInput.value = String(preset.uniforms.scale);
+    intensityInput.value = String(preset.uniforms.intensity);
+    updateUniformControl("scale", scaleInput, scaleValue);
+    updateUniformControl("intensity", intensityInput, intensityValue);
+    presetNameInput.value = preset.name;
+    setDirty(!isViewerMode);
+  };
+
+  const deletePreset = () => {
+    if (isViewerMode) {
+      return;
+    }
+
+    const project = getActiveProject();
+
+    if (!project || !presetSelect.value) {
+      return;
+    }
+
+    const presets = normalizePresets(project.presets).filter((preset) => preset.id !== presetSelect.value);
+    persistActiveProjectPresets(presets);
+    setDirty(false);
+    setError("Preset deleted.");
   };
 
   const createShareUrl = () => {
@@ -626,6 +787,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
           scale: Number(imported.uniforms?.scale ?? 1),
           intensity: Number(imported.uniforms?.intensity ?? 1),
         },
+        presets: normalizePresets(imported.presets),
         createdAt: getNow(),
         updatedAt: getNow(),
       };
@@ -703,6 +865,17 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   shareProjectButton.addEventListener("click", openShareUrl);
   copyShareLinkButton.addEventListener("click", copyShareUrl);
   editCopyButton.addEventListener("click", editSharedCopy);
+  savePresetButton.addEventListener("click", savePreset);
+  loadPresetButton.addEventListener("click", loadPreset);
+  deletePresetButton.addEventListener("click", deletePreset);
+  presetSelect.addEventListener("change", () => {
+    const project = getActiveProject() || readCurrentProject();
+    const preset = normalizePresets(project.presets).find((item) => item.id === presetSelect.value);
+
+    if (preset) {
+      presetNameInput.value = preset.name;
+    }
+  });
   importProjectButton.addEventListener("click", () => importProjectInput.click());
   importProjectInput.addEventListener("change", () => {
     const [file] = importProjectInput.files;

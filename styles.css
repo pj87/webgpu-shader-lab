@@ -314,7 +314,8 @@ canvas {
   backdrop-filter: blur(14px);
 }
 
-.inspector label {
+.inspector label,
+.preset-title {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr) 48px;
   align-items: center;
@@ -323,8 +324,13 @@ canvas {
   font-size: 13px;
 }
 
-.inspector input {
+.inspector input,
+.inspector select {
   width: 100%;
+  min-width: 0;
+}
+
+.inspector input[type="range"] {
   accent-color: #8cc7b4;
 }
 
@@ -332,6 +338,41 @@ canvas {
   color: #f4f1ec;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.preset-panel {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(244, 241, 236, 0.13);
+}
+
+.preset-title {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
+.preset-title select,
+.preset-panel input[type="text"] {
+  height: 34px;
+  border: 1px solid rgba(244, 241, 236, 0.18);
+  border-radius: 6px;
+  background: #20201e;
+  color: #f4f1ec;
+}
+
+.preset-panel input[type="text"] {
+  padding: 0 10px;
+}
+
+.preset-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preset-actions button {
+  min-width: 0;
+  height: 34px;
 }
 
 @media (max-width: 900px) {
