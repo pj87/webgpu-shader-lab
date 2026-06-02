@@ -10,7 +10,7 @@
     <main class="app-shell">
       <aside class="sidebar">
         <div>
-          <p class="eyebrow">Milestone 5</p>
+          <p class="eyebrow">Milestone 6</p>
           <h1>WebGPU Shader Lab</h1>
         </div>
         <div id="viewerNotice" class="viewer-notice" hidden>
@@ -40,10 +40,24 @@
           </div>
           <button id="editCopyButton" class="wide-button" type="button" hidden>Edit Copy</button>
         </section>
+        <section id="recoveryPanel" class="recovery-panel" aria-label="Recovery" hidden>
+          <div>
+            <strong>Autosave Found</strong>
+            <span id="recoveryTime">Draft available</span>
+          </div>
+          <div class="project-actions">
+            <button id="restoreDraftButton" type="button">Restore</button>
+            <button id="discardDraftButton" type="button">Discard</button>
+          </div>
+        </section>
         <div class="status-group">
           <div class="status-row">
             <span>Project</span>
             <strong id="projectStatus">Draft</strong>
+          </div>
+          <div class="status-row">
+            <span>Autosave</span>
+            <strong id="autosaveStatus">Idle</strong>
           </div>
           <div class="status-row">
             <span>Adapter</span>

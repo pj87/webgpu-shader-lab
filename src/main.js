@@ -1,5 +1,6 @@
 (async () => {
   const storageKey = "webgpu-shader-lab-projects";
+  const draftStorageKey = "webgpu-shader-lab-draft";
   const shareParam = "share";
 
   const shaderTemplates = {
@@ -279,6 +280,10 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const shareProjectButton = document.querySelector("#shareProjectButton");
   const copyShareLinkButton = document.querySelector("#copyShareLinkButton");
   const editCopyButton = document.querySelector("#editCopyButton");
+  const recoveryPanel = document.querySelector("#recoveryPanel");
+  const recoveryTime = document.querySelector("#recoveryTime");
+  const restoreDraftButton = document.querySelector("#restoreDraftButton");
+  const discardDraftButton = document.querySelector("#discardDraftButton");
   const runButton = document.querySelector("#runButton");
   const pauseButton = document.querySelector("#pauseButton");
   const resetTimeButton = document.querySelector("#resetTimeButton");
@@ -287,6 +292,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const autoRunToggle = document.querySelector("#autoRunToggle");
   const errorPanel = document.querySelector("#errorPanel");
   const projectStatus = document.querySelector("#projectStatus");
+  const autosaveStatus = document.querySelector("#autosaveStatus");
   const adapterStatus = document.querySelector("#adapterStatus");
   const pipelineStatus = document.querySelector("#pipelineStatus");
   const frameStatus = document.querySelector("#frameStatus");
@@ -303,12 +309,14 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   const previewPane = document.querySelector(".preview-pane");
 
   let compileTimer = 0;
+  let autosaveTimer = 0;
   let projects = [];
   let activeProjectId = "";
   let activeProjectSnapshot = null;
   let isDirty = false;
   let isViewerMode = false;
   let lastShareUrl = "";
+  let pendingDraft = null;
 
   const createId = () => {
     if (crypto.randomUUID) {
@@ -429,9 +437,66 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     localStorage.setItem(storageKey, JSON.stringify(projects));
   };
 
+  const loadDraft = () => {
+    try {
+      const draft = JSON.parse(localStorage.getItem(draftStorageKey) || "null");
+      return draft && typeof draft.shaderSource === "string" ? draft : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const persistDraft = () => {
+    if (isViewerMode || !isDirty) {
+      return;
+    }
+
+    const draft = {
+      ...readCurrentProject(),
+      savedAt: getNow(),
+    };
+
+    localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+    pendingDraft = draft;
+    autosaveStatus.textContent = "Saved";
+    recoveryPanel.hidden = true;
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem(draftStorageKey);
+    pendingDraft = null;
+    autosaveStatus.textContent = "Idle";
+    recoveryPanel.hidden = true;
+  };
+
+  const queueAutosave = () => {
+    if (isViewerMode) {
+      return;
+    }
+
+    autosaveStatus.textContent = "Pending";
+    clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(persistDraft, 700);
+  };
+
+  const showRecoveryPanel = (draft) => {
+    if (!draft) {
+      return;
+    }
+
+    pendingDraft = draft;
+    recoveryPanel.hidden = false;
+    recoveryTime.textContent = `Saved ${new Date(draft.savedAt || draft.updatedAt || getNow()).toLocaleString()}`;
+    autosaveStatus.textContent = "Draft";
+  };
+
   const setDirty = (value) => {
     isDirty = value;
     projectStatus.textContent = isViewerMode ? "Shared" : value ? "Unsaved" : "Saved";
+
+    if (value) {
+      queueAutosave();
+    }
   };
 
   const setViewerMode = (value) => {
@@ -557,6 +622,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     activeProjectId = project.id;
     activeProjectSnapshot = project;
     persistProjects();
+    clearDraft();
     renderProjectList();
     renderPresetList(project.presets);
     setDirty(false);
@@ -600,6 +666,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     projects.unshift(duplicate);
     activeProjectId = duplicate.id;
     persistProjects();
+    clearDraft();
     applyProject(duplicate);
   };
 
@@ -615,6 +682,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 
     projects = projects.filter((item) => item.id !== activeProjectId);
     persistProjects();
+    clearDraft();
 
     if (projects.length > 0) {
       applyProject(projects[0]);
@@ -645,6 +713,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
       project.updatedAt = getNow();
       activeProjectSnapshot = project;
       persistProjects();
+      clearDraft();
       renderPresetList(project.presets);
       return;
     }
@@ -723,6 +792,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   };
 
   const createShareUrl = () => {
+    saveActiveProject();
     const url = new URL(window.location.href);
     url.search = "";
     url.hash = "";
@@ -761,6 +831,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     projects = loadProjects();
     projects.unshift(project);
     persistProjects();
+    clearDraft();
 
     const url = new URL(window.location.href);
     url.searchParams.delete(shareParam);
@@ -794,12 +865,42 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 
       projects.unshift(project);
       persistProjects();
+      clearDraft();
       applyProject(project);
     } catch (error) {
       setError(error.message || String(error), true);
     } finally {
       importProjectInput.value = "";
     }
+  };
+
+  const restoreDraft = () => {
+    if (!pendingDraft) {
+      return;
+    }
+
+    const draft = {
+      ...createProject(pendingDraft.title || "Recovered Draft"),
+      ...pendingDraft,
+      id: pendingDraft.id || createId(),
+      title: pendingDraft.title || "Recovered Draft",
+      uniforms: {
+        scale: Number(pendingDraft.uniforms?.scale ?? 1),
+        intensity: Number(pendingDraft.uniforms?.intensity ?? 1),
+      },
+      presets: normalizePresets(pendingDraft.presets),
+      updatedAt: getNow(),
+    };
+
+    applyProject(draft, true);
+    setDirty(true);
+    recoveryPanel.hidden = true;
+    autosaveStatus.textContent = "Restored";
+  };
+
+  const discardDraft = () => {
+    clearDraft();
+    setError("Draft discarded.");
   };
 
   const setError = (message, isError = false) => {
@@ -865,6 +966,8 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   shareProjectButton.addEventListener("click", openShareUrl);
   copyShareLinkButton.addEventListener("click", copyShareUrl);
   editCopyButton.addEventListener("click", editSharedCopy);
+  restoreDraftButton.addEventListener("click", restoreDraft);
+  discardDraftButton.addEventListener("click", discardDraft);
   savePresetButton.addEventListener("click", savePreset);
   loadPresetButton.addEventListener("click", loadPreset);
   deletePresetButton.addEventListener("click", deletePreset);
@@ -947,6 +1050,11 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     setDirty(true);
   });
 
+  window.addEventListener("beforeunload", () => {
+    clearTimeout(autosaveTimer);
+    persistDraft();
+  });
+
   try {
     const sharedProject = readSharedProjectFromUrl();
 
@@ -959,6 +1067,7 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     }
 
     projects = loadProjects();
+    showRecoveryPanel(loadDraft());
 
     if (projects.length === 0) {
       const starterProject = createProject("Starter Rings", "rings");

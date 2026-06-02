@@ -1,6 +1,6 @@
 # WebGPU Shader Lab
 
-Milestone 5 of the full-stack WebGPU learning plan.
+Milestone 6 of the full-stack WebGPU learning plan.
 
 This version is dependency-free because Node.js/npm are not currently available on the machine. It provides:
 
@@ -19,6 +19,7 @@ This version is dependency-free because Node.js/npm are not currently available 
 - read-only share URLs
 - edit-copy flow for shared shaders
 - per-project uniform presets
+- debounced autosave with draft recovery
 
 ## Run
 
@@ -38,4 +39,4 @@ Chrome or Edge are the safest choices. If the browser blocks WebGPU for local fi
 
 ## Next Step
 
-Install Node.js, then move this into a Vite + React + TypeScript structure for Milestone 2.
+Install Node.js, then move this into a Vite + React + TypeScript structure so the static prototype can become a typed React app.
