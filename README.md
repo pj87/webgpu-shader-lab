@@ -1,8 +1,8 @@
 # WebGPU Shader Lab
 
-Milestone 6 of the full-stack WebGPU learning plan.
+Milestone 7 of the full-stack WebGPU learning plan.
 
-This version is dependency-free because Node.js/npm are not currently available on the machine. It provides:
+This version is a Vite + React + TypeScript app. It provides:
 
 - a technical tool layout
 - a WebGPU canvas preview
@@ -23,23 +23,23 @@ This version is dependency-free because Node.js/npm are not currently available 
 
 ## Run
 
-Serve the folder locally:
+Install dependencies:
 
 ```powershell
-python -m http.server 8000
+npm install
 ```
 
-Then open:
+Run the dev server:
 
-```text
-http://localhost:8000
+```powershell
+npm run dev
 ```
 
-Chrome or Edge are the safest choices. If the browser blocks WebGPU for local files, serve the folder with any local static server after Node.js or another runtime is installed.
+Chrome or Edge are the safest choices for WebGPU.
 
 ## Next Step
 
-Install Node.js, then move this into a Vite + React + TypeScript structure so the static prototype can become a typed React app.
+Split the React app into smaller components, then prepare the Next.js/PostgreSQL backend milestone.
 
 ## Handoff
 

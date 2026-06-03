@@ -225,7 +225,25 @@ button {
   cursor: pointer;
 }
 
+.file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 40px;
+  border: 1px solid rgba(244, 241, 236, 0.18);
+  border-radius: 6px;
+  background: #d86445;
+  color: #151515;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 button:hover {
+  background: #ee7858;
+}
+
+.file-button:hover {
   background: #ee7858;
 }
 

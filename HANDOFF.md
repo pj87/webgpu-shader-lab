@@ -4,13 +4,18 @@ This repo contains a static prototype for the Full-Stack WebGPU Shader Lab learn
 
 ## Current State
 
-The app is intentionally dependency-free because Node.js/npm were not installed on the machine when the project was started. It runs as plain HTML/CSS/JavaScript served by Python.
+The app began as a dependency-free static prototype and has now been migrated to Vite + React + TypeScript.
 
 Current files:
 
-- `index.html` - app shell and controls
+- `index.html` - Vite root
 - `styles.css` - full UI styling
-- `src/main.js` - WebGPU renderer, editor behavior, storage, sharing, presets, autosave
+- `src/App.tsx` - React application state and UI
+- `src/main.tsx` - React entry point
+- `src/webgpu/WebGPURenderer.ts` - WebGPU renderer
+- `src/webgpu/shaders.ts` - WGSL shader templates and shared WGSL
+- `src/lib/` - project storage, share links, and types
+- `package.json` / `vite.config.ts` / `tsconfig.json` - Vite React TypeScript setup
 - `README.md` - run instructions
 - `full_stack_webgpu_learning_plan.md` - original project plan
 
@@ -65,28 +70,25 @@ d528481 Create WebGPU shader lab milestone
 ## Run Locally
 
 ```powershell
-python -m http.server 8000
+npm install
+npm run dev
 ```
 
 Then open:
-
-```text
-http://localhost:8000
-```
 
 Use Chrome or Edge with WebGPU enabled.
 
 ## Known Constraints
 
-- Node.js/npm are not installed locally, so this has not yet been migrated to Vite, React, or TypeScript.
 - No automated browser/WebGPU interaction tests have been run from this environment.
 - The app stores projects and drafts in browser `localStorage`; this data is not committed to Git.
 - Share URLs embed the project payload in the query string. This is fine for the static prototype but should become backend public slugs later.
-- The current code is a single `src/main.js` file. It should be split into modules during the TypeScript migration.
+- `src/App.tsx` is still large and should be split into focused components next.
+- Production build currently passes with `npm run build`.
 
 ## Recommended Next Step
 
-Install Node.js, then migrate the static prototype into a Vite + React + TypeScript app while preserving current behavior.
+Split `src/App.tsx` into focused React components while preserving current behavior.
 
 Suggested structure:
 
@@ -111,14 +113,6 @@ src/
     autosave.ts
     presets.ts
     types.ts
-```
-
-Suggested commands after Node.js is installed:
-
-```powershell
-npm create vite@latest . -- --template react-ts
-npm install
-npm run dev
 ```
 
 After migration, the next major product milestone should be a Next.js/PostgreSQL backend with real project persistence, auth, and public slugs.
